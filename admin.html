@@ -9,97 +9,66 @@
 <body>
   <div id="loginSection" class="container">
     <h2>Admin Login</h2>
-    <input type="email" id="email" placeholder="Email" value="admin@example.com">
-    <input type="password" id="password" placeholder="Password" value="password123">
-    <button id="loginButton">Iniciar Sesión</button>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="handleLogin()">Iniciar Sesión</button>
     <div id="loginError" style="color: red; margin-top: 10px;"></div>
   </div>
 
   <div id="dashboardSection" class="container" style="display:none;">
     <h2>Panel de Administración</h2>
-    <button id="logoutButton" style="margin-bottom: 20px;">Cerrar Sesión</button>
-    <table id="ordersTable">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Plataforma</th>
-          <th>Discord</th>
-          <th>Rockstar</th>
-          <th>Servicios</th>
-          <th>Estado</th>
-          <th>Compras</th>
-          <th>Acción</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <button onclick="handleLogout()">Cerrar Sesión</button>
+    <div id="ordersContainer"></div>
   </div>
 
   <script>
     // ============================================
-    // CONFIGURACIÓN DE SUPABASE
+    // CONFIGURACIÓN (USA TUS VALORES REALES)
     // ============================================
-    const supabase = createClient(
-      'https://nzbkaztxcprxeriisgmp.supabase.co',
-      'e39eb28998776ccbe438b9081060342426c92fc44f7978e50f5bf8f3149ed179' // 👈 REEMPLAZA ESTO
-    );
+    const SUPABASE_URL = 'https://nzbkaztxcprxeriisgmp.supabase.co';
+    const SUPABASE_ANON_KEY = 'e39eb28998776ccbe438b9081060342426c92fc44f7978e50f5bf8f3149ed179';
+    
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ============================================
-    // ELEMENTOS DEL DOM
+    // VERIFICAR SESIÓN AL CARGAR
     // ============================================
-    const loginSection = document.getElementById('loginSection');
-    const dashboardSection = document.getElementById('dashboardSection');
-    const loginButton = document.getElementById('loginButton');
-    const logoutButton = document.getElementById('logoutButton');
-    const loginError = document.getElementById('loginError');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-
-    // ============================================
-    // VERIFICAR SESIÓN AL CARGAR LA PÁGINA
-    // ============================================
-    async function checkSession() {
+    window.onload = async function() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         showDashboard();
         loadOrders();
       }
-    }
+    };
 
     // ============================================
-    // FUNCIÓN DE LOGIN
+    // LOGIN (llamado directamente por el botón)
     // ============================================
-    async function login() {
-      const email = emailInput.value.trim();
-      const password = passwordInput.value.trim();
+    async function handleLogin() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('loginError');
 
       if (!email || !password) {
-        loginError.innerText = 'Por favor ingresa email y contraseña';
+        errorDiv.innerText = 'Por favor ingresa email y contraseña';
         return;
       }
 
-      loginError.innerText = 'Iniciando sesión...';
-      loginButton.disabled = true;
+      errorDiv.innerText = 'Iniciando sesión...';
 
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
 
-        if (error) {
-          throw error;
-        }
-
-        if (data.session) {
-          loginError.innerText = '';
-          showDashboard();
-          loadOrders();
-        }
-      } catch (error) {
-        console.error('Error de login:', error);
-        loginError.innerText = 'Error: ' + error.message;
-        loginButton.disabled = false;
+      if (error) {
+        console.error('Error:', error);
+        errorDiv.innerText = 'Error: ' + error.message;
+      } else {
+        console.log('Login exitoso:', data);
+        errorDiv.innerText = '';
+        showDashboard();
+        loadOrders();
       }
     }
 
@@ -107,117 +76,83 @@
     // MOSTRAR DASHBOARD
     // ============================================
     function showDashboard() {
-      loginSection.style.display = 'none';
-      dashboardSection.style.display = 'block';
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('dashboardSection').style.display = 'block';
     }
 
     // ============================================
     // CARGAR PEDIDOS
     // ============================================
     async function loadOrders() {
-      try {
-        const { data: orders, error } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            customers (
-              purchase_count
-            )
-          `)
-          .order('created_at', { ascending: false });
+      const container = document.getElementById('ordersContainer');
+      
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*, customers(purchase_count)')
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
-
-        const tbody = document.querySelector('#ordersTable tbody');
-        tbody.innerHTML = '';
-
-        if (!orders || orders.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No hay pedidos</td></tr>';
-          return;
-        }
-
-        orders.forEach(order => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${order.id}</td>
-            <td>${order.platform}</td>
-            <td>${order.discord_username}</td>
-            <td>${order.rockstar_username}</td>
-            <td>${JSON.parse(order.services).join(', ')}</td>
-            <td>${order.status}</td>
-            <td>${order.customers?.purchase_count || 1}</td>
-            <td>
-              ${order.status === 'pending' 
-                ? `<button class="complete-btn" data-id="${order.id}">Completar</button>` 
-                : 'Completado'}
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        // Agregar event listeners a los botones de completar
-        document.querySelectorAll('.complete-btn').forEach(btn => {
-          btn.addEventListener('click', () => completeOrder(btn.dataset.id));
-        });
-
-      } catch (error) {
-        console.error('Error cargando pedidos:', error);
-        alert('Error al cargar pedidos: ' + error.message);
+      if (error) {
+        container.innerHTML = 'Error cargando pedidos: ' + error.message;
+        return;
       }
+
+      if (!orders || orders.length === 0) {
+        container.innerHTML = '<p>No hay pedidos</p>';
+        return;
+      }
+
+      let html = '<table><tr><th>ID</th><th>Plataforma</th><th>Discord</th><th>Rockstar</th><th>Servicios</th><th>Estado</th><th>Compras</th><th>Acción</th></tr>';
+      
+      orders.forEach(order => {
+        html += '<tr>';
+        html += `<td>${order.id}</td>`;
+        html += `<td>${order.platform}</td>`;
+        html += `<td>${order.discord_username}</td>`;
+        html += `<td>${order.rockstar_username}</td>`;
+        html += `<td>${JSON.parse(order.services).join(', ')}</td>`;
+        html += `<td>${order.status}</td>`;
+        html += `<td>${order.customers?.purchase_count || 1}</td>`;
+        html += `<td>`;
+        if (order.status === 'pending') {
+          html += `<button onclick="completeOrder(${order.id})">Completar</button>`;
+        } else {
+          html += 'Completado';
+        }
+        html += `</td>`;
+        html += '</tr>';
+      });
+      
+      html += '</table>';
+      container.innerHTML = html;
     }
 
     // ============================================
     // COMPLETAR PEDIDO
     // ============================================
     async function completeOrder(orderId) {
-      try {
-        const { error } = await supabase
-          .from('orders')
-          .update({ 
-            status: 'completed', 
-            completed_at: new Date().toISOString() 
-          })
-          .eq('id', orderId);
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('id', orderId);
 
-        if (error) throw error;
-
-        // Recargar la lista de pedidos
-        loadOrders();
-      } catch (error) {
-        console.error('Error completando pedido:', error);
-        alert('Error al completar pedido: ' + error.message);
+      if (error) {
+        alert('Error: ' + error.message);
+      } else {
+        loadOrders(); // Recargar la lista
       }
     }
 
     // ============================================
     // LOGOUT
     // ============================================
-    async function logout() {
+    async function handleLogout() {
       await supabase.auth.signOut();
-      loginSection.style.display = 'block';
-      dashboardSection.style.display = 'none';
-      emailInput.value = '';
-      passwordInput.value = '';
-      loginError.innerText = '';
-      loginButton.disabled = false;
+      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('dashboardSection').style.display = 'none';
+      document.getElementById('email').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('loginError').innerText = '';
     }
-
-    // ============================================
-    // EVENT LISTENERS
-    // ============================================
-    loginButton.addEventListener('click', login);
-
-    logoutButton.addEventListener('click', logout);
-
-    // Permitir login con Enter
-    passwordInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        login();
-      }
-    });
-
-    // Verificar sesión al cargar la página
-    checkSession();
   </script>
 </body>
 </html>
