@@ -1,106 +1,145 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Admin - GTA Services (Modo Lectura)</title>
-  <link rel="stylesheet" href="/css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Admin Panel</title>
+    <style>
+        body { 
+            background: #0a0a0f; 
+            color: #e0d0ff; 
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: rgba(20, 10, 30, 0.9); 
+            border: 1px solid #7d3ac1; 
+            border-radius: 20px; 
+            padding: 20px; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            color: white; 
+        }
+        th, td { 
+            border: 1px solid #4a1e6b; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        th { 
+            background: #2e1b40; 
+        }
+        .error { 
+            color: red; 
+            background: #1a1025; 
+            padding: 10px; 
+            border-radius: 5px; 
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div class="container">
-    <h2>Panel de Administración - Pedidos Recientes</h2>
-    <p>Mostrando pedidos sin necesidad de login (usando anon key)</p>
-    <div id="ordersContainer"></div>
-  </div>
+    <div class="container">
+        <h2>Panel de Administración</h2>
+        <div id="status">Iniciando...</div>
+        <div id="contenido"></div>
+    </div>
 
-  <script>
-    // ============================================
-    // CONFIGURACIÓN (USA TUS VALORES REALES)
-    // ============================================
-    const SUPABASE_URL = 'https://nzbkaztxcprxeriisgmp.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56YmthenR4Y3ByeGVyaWlzZ21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjU3MTEsImV4cCI6MjA1NzYwMTcxMX0.2CxMk3dAtffIGvO6QbM_FKfWetk77vOe-6rT0hE9kFk';
-    
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <script>
+        // Mostrar que el script empezó
+        document.getElementById('status').innerHTML = '✅ Script iniciado';
 
-    // ============================================
-    // CARGAR PEDIDOS DIRECTAMENTE
-    // ============================================
-    async function loadOrders() {
-      const container = document.getElementById('ordersContainer');
-      container.innerHTML = 'Cargando pedidos...';
+        // ============================================
+        // CONFIGURACIÓN (VERIFICA ESTOS DATOS)
+        // ============================================
+        const SUPABASE_URL = 'https://nzbkaztxcprxeriisgmp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56YmthenR4Y3ByeGVyaWlzZ21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjU3MTEsImV4cCI6MjA1NzYwMTcxMX0.2CxMk3dAtffIGvO6QbM_FKfWetk77vOe-6rT0hE9kFk';
+        
+        document.getElementById('status').innerHTML += '<br>✅ Configuración cargada';
 
-      try {
-        // Intentar obtener pedidos
-        const { data: orders, error } = await supabase
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (error) {
-          throw error;
+        // Crear cliente
+        let supabase;
+        try {
+            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            document.getElementById('status').innerHTML += '<br>✅ Cliente Supabase creado';
+        } catch (e) {
+            document.getElementById('status').innerHTML += '<br>❌ Error creando cliente: ' + e.message;
         }
 
-        if (!orders || orders.length === 0) {
-          container.innerHTML = '<p>No hay pedidos para mostrar</p>';
-          return;
+        // ============================================
+        // PROBAR CONEXIÓN SIMPLE
+        // ============================================
+        async function probarConexion() {
+            document.getElementById('status').innerHTML += '<br>🔄 Probando conexión...';
+            
+            try {
+                // Intento simple de obtener la sesión (no requiere auth)
+                const { error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    document.getElementById('status').innerHTML += '<br>❌ Error de conexión: ' + error.message;
+                } else {
+                    document.getElementById('status').innerHTML += '<br>✅ Conexión OK';
+                    cargarPedidos();
+                }
+            } catch (err) {
+                document.getElementById('status').innerHTML += '<br>🔥 Error: ' + err.message;
+            }
         }
 
-        // Crear tabla
-        let html = `
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Plataforma</th>
-                <th>Discord</th>
-                <th>Rockstar</th>
-                <th>Servicios</th>
-                <th>Detalles</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
+        // ============================================
+        // CARGAR PEDIDOS
+        // ============================================
+        async function cargarPedidos() {
+            document.getElementById('contenido').innerHTML = 'Cargando pedidos...';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(5);
 
-        orders.forEach(order => {
-          // Parsear servicios (son JSON en la BD)
-          let servicios = 'Error al parsear';
-          try {
-            servicios = JSON.parse(order.services).join(', ');
-          } catch (e) {
-            servicios = order.services;
-          }
+                if (error) {
+                    throw error;
+                }
 
-          html += `
-            <tr>
-              <td>${order.id}</td>
-              <td>${order.platform}</td>
-              <td>${order.discord_username}</td>
-              <td>${order.rockstar_username}</td>
-              <td>${servicios}</td>
-              <td>${order.console_details || '-'}</td>
-              <td>${order.status}</td>
-              <td>${new Date(order.created_at).toLocaleString()}</td>
-            </tr>
-          `;
-        });
+                if (!data || data.length === 0) {
+                    document.getElementById('contenido').innerHTML = '<p>No hay pedidos</p>';
+                    return;
+                }
 
-        html += '</tbody></table>';
-        container.innerHTML = html;
+                let html = '<table><tr><th>ID</th><th>Platform</th><th>Discord</th><th>Servicios</th><th>Estado</th></tr>';
+                
+                data.forEach(pedido => {
+                    let servicios = '[]';
+                    try {
+                        servicios = JSON.parse(pedido.services).join(', ');
+                    } catch (e) {
+                        servicios = pedido.services;
+                    }
+                    
+                    html += `<tr>
+                        <td>${pedido.id}</td>
+                        <td>${pedido.platform}</td>
+                        <td>${pedido.discord_username}</td>
+                        <td>${servicios}</td>
+                        <td>${pedido.status}</td>
+                    </tr>`;
+                });
+                
+                html += '</table>';
+                document.getElementById('contenido').innerHTML = html;
 
-      } catch (error) {
-        console.error('Error completo:', error);
-        container.innerHTML = `
-          <p style="color: red;">Error al cargar pedidos:</p>
-          <pre>${JSON.stringify(error, null, 2)}</pre>
-        `;
-      }
-    }
+            } catch (err) {
+                document.getElementById('contenido').innerHTML = `<div class="error">Error: ${err.message}</div>`;
+                console.error(err);
+            }
+        }
 
-    // Cargar pedidos automáticamente al abrir la página
-    loadOrders();
-  </script>
+        // Iniciar prueba
+        probarConexion();
+    </script>
 </body>
 </html>
