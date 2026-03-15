@@ -1,158 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Admin - GTA Services</title>
-  <link rel="stylesheet" href="/css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Test</title>
 </head>
 <body>
-  <div id="loginSection" class="container">
-    <h2>Admin Login</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <button onclick="handleLogin()">Iniciar Sesión</button>
-    <div id="loginError" style="color: red; margin-top: 10px;"></div>
-  </div>
+    <h1>Test de JavaScript</h1>
+    <button onclick="testFunction()">Haz clic aquí</button>
 
-  <div id="dashboardSection" class="container" style="display:none;">
-    <h2>Panel de Administración</h2>
-    <button onclick="handleLogout()">Cerrar Sesión</button>
-    <div id="ordersContainer"></div>
-  </div>
+    <script>
+        console.log('✅ admin.html cargado correctamente');
+        alert('JavaScript funcionando');
 
-  <script>
-    // ============================================
-    // CONFIGURACIÓN (USA TUS VALORES REALES)
-    // ============================================
-    const SUPABASE_URL = 'https://nzbkaztxcprxeriisgmp.supabase.co';
-    const SUPABASE_ANON_KEY = 'e39eb28998776ccbe438b9081060342426c92fc44f7978e50f5bf8f3149ed179';
-    
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // ============================================
-    // VERIFICAR SESIÓN AL CARGAR
-    // ============================================
-    window.onload = async function() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        showDashboard();
-        loadOrders();
-      }
-    };
-
-    // ============================================
-    // LOGIN (llamado directamente por el botón)
-    // ============================================
-    async function handleLogin() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      const errorDiv = document.getElementById('loginError');
-
-      if (!email || !password) {
-        errorDiv.innerText = 'Por favor ingresa email y contraseña';
-        return;
-      }
-
-      errorDiv.innerText = 'Iniciando sesión...';
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-
-      if (error) {
-        console.error('Error:', error);
-        errorDiv.innerText = 'Error: ' + error.message;
-      } else {
-        console.log('Login exitoso:', data);
-        errorDiv.innerText = '';
-        showDashboard();
-        loadOrders();
-      }
-    }
-
-    // ============================================
-    // MOSTRAR DASHBOARD
-    // ============================================
-    function showDashboard() {
-      document.getElementById('loginSection').style.display = 'none';
-      document.getElementById('dashboardSection').style.display = 'block';
-    }
-
-    // ============================================
-    // CARGAR PEDIDOS
-    // ============================================
-    async function loadOrders() {
-      const container = document.getElementById('ordersContainer');
-      
-      const { data: orders, error } = await supabase
-        .from('orders')
-        .select('*, customers(purchase_count)')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        container.innerHTML = 'Error cargando pedidos: ' + error.message;
-        return;
-      }
-
-      if (!orders || orders.length === 0) {
-        container.innerHTML = '<p>No hay pedidos</p>';
-        return;
-      }
-
-      let html = '<table><tr><th>ID</th><th>Plataforma</th><th>Discord</th><th>Rockstar</th><th>Servicios</th><th>Estado</th><th>Compras</th><th>Acción</th></tr>';
-      
-      orders.forEach(order => {
-        html += '<tr>';
-        html += `<td>${order.id}</td>`;
-        html += `<td>${order.platform}</td>`;
-        html += `<td>${order.discord_username}</td>`;
-        html += `<td>${order.rockstar_username}</td>`;
-        html += `<td>${JSON.parse(order.services).join(', ')}</td>`;
-        html += `<td>${order.status}</td>`;
-        html += `<td>${order.customers?.purchase_count || 1}</td>`;
-        html += `<td>`;
-        if (order.status === 'pending') {
-          html += `<button onclick="completeOrder(${order.id})">Completar</button>`;
-        } else {
-          html += 'Completado';
+        function testFunction() {
+            alert('Botón funcionando');
         }
-        html += `</td>`;
-        html += '</tr>';
-      });
-      
-      html += '</table>';
-      container.innerHTML = html;
-    }
-
-    // ============================================
-    // COMPLETAR PEDIDO
-    // ============================================
-    async function completeOrder(orderId) {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'completed', completed_at: new Date().toISOString() })
-        .eq('id', orderId);
-
-      if (error) {
-        alert('Error: ' + error.message);
-      } else {
-        loadOrders(); // Recargar la lista
-      }
-    }
-
-    // ============================================
-    // LOGOUT
-    // ============================================
-    async function handleLogout() {
-      await supabase.auth.signOut();
-      document.getElementById('loginSection').style.display = 'block';
-      document.getElementById('dashboardSection').style.display = 'none';
-      document.getElementById('email').value = '';
-      document.getElementById('password').value = '';
-      document.getElementById('loginError').innerText = '';
-    }
-  </script>
+    </script>
 </body>
 </html>
