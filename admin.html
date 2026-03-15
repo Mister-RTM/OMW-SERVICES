@@ -1,122 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Test Supabase</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8">
+  <title>Admin - GTA Services (Modo Lectura)</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <h1>Test de Conexión Supabase</h1>
+  <div class="container">
+    <h2>Panel de Administración - Pedidos Recientes</h2>
+    <p>Mostrando pedidos sin necesidad de login (usando anon key)</p>
+    <div id="ordersContainer"></div>
+  </div>
+
+  <script>
+    // ============================================
+    // CONFIGURACIÓN (USA TUS VALORES REALES)
+    // ============================================
+    const SUPABASE_URL = 'https://nzbkaztxcprxeriisgmp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56YmthenR4Y3ByeGVyaWlzZ21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjU3MTEsImV4cCI6MjA1NzYwMTcxMX0.2CxMk3dAtffIGvO6QbM_FKfWetk77vOe-6rT0hE9kFk';
     
-    <div>
-        <input type="email" id="email" placeholder="Email" value="admin@example.com">
-        <input type="password" id="password" placeholder="Password" value="password123">
-        <button onclick="testLogin()">Probar Login</button>
-    </div>
-    
-    <div id="resultado" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    <script>
-        // ============================================
-        // TUS DATOS DE SUPABASE (VERIFICA QUE SEAN CORRECTOS)
-        // ============================================
-        const SUPABASE_URL = 'https://nzbkaztxcprxeriisgmp.supabase.co';
-        const SUPABASE_ANON_KEY = 'e39eb28998776ccbe438b9081060342426c92fc44f7978e50f5bf8f3149ed179';
-        
-        console.log('🚀 Iniciando prueba...');
-        console.log('URL:', SUPABASE_URL);
-        console.log('ANON_KEY (primeros 20 chars):', SUPABASE_ANON_KEY.substring(0, 20) + '...');
+    // ============================================
+    // CARGAR PEDIDOS DIRECTAMENTE
+    // ============================================
+    async function loadOrders() {
+      const container = document.getElementById('ordersContainer');
+      container.innerHTML = 'Cargando pedidos...';
 
-        // Crear cliente de Supabase
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('✅ Cliente Supabase creado');
+      try {
+        // Intentar obtener pedidos
+        const { data: orders, error } = await supabase
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
 
-        // Función para mostrar resultados
-        function mostrarResultado(tipo, mensaje, datos = null) {
-            const div = document.getElementById('resultado');
-            div.innerHTML = `
-                <strong>${tipo}:</strong> ${mensaje}<br>
-                ${datos ? '<pre>' + JSON.stringify(datos, null, 2) + '</pre>' : ''}
-            `;
+        if (error) {
+          throw error;
         }
 
-        // ============================================
-        // PROBAR LOGIN
-        // ============================================
-        async function testLogin() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            mostrarResultado('⏳', 'Intentando login...');
-            console.log('Intentando login con:', email);
-
-            try {
-                const { data, error } = await supabase.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-
-                if (error) {
-                    console.error('❌ Error de login:', error);
-                    mostrarResultado('❌ ERROR', error.message, error);
-                } else {
-                    console.log('✅ Login exitoso:', data);
-                    mostrarResultado('✅ ÉXITO', 'Login correcto', {
-                        user: data.user.email,
-                        session: !!data.session
-                    });
-                    
-                    // Después del login, probar acceso a tabla orders
-                    await testOrders();
-                }
-            } catch (err) {
-                console.error('🔥 Error inesperado:', err);
-                mostrarResultado('🔥 ERROR', err.message, err);
-            }
+        if (!orders || orders.length === 0) {
+          container.innerHTML = '<p>No hay pedidos para mostrar</p>';
+          return;
         }
 
-        // ============================================
-        // PROBAR ACCESO A ORDERS
-        // ============================================
-        async function testOrders() {
-            mostrarResultado('⏳', 'Probando acceso a tabla orders...');
-            
-            try {
-                const { data, error } = await supabase
-                    .from('orders')
-                    .select('count', { count: 'exact', head: true });
+        // Crear tabla
+        let html = `
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Plataforma</th>
+                <th>Discord</th>
+                <th>Rockstar</th>
+                <th>Servicios</th>
+                <th>Detalles</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
 
-                if (error) {
-                    console.error('❌ Error accediendo a orders:', error);
-                    mostrarResultado('❌ ERROR TABLA', error.message, error);
-                } else {
-                    console.log('✅ Acceso a orders OK');
-                    mostrarResultado('✅ ÉXITO', 'Conexión a orders OK', { mensaje: 'Puedes leer la tabla' });
-                }
-            } catch (err) {
-                console.error('🔥 Error inesperado:', err);
-                mostrarResultado('🔥 ERROR', err.message, err);
-            }
-        }
+        orders.forEach(order => {
+          // Parsear servicios (son JSON en la BD)
+          let servicios = 'Error al parsear';
+          try {
+            servicios = JSON.parse(order.services).join(', ');
+          } catch (e) {
+            servicios = order.services;
+          }
 
-        // ============================================
-        // PROBAR CONEXIÓN BÁSICA
-        // ============================================
-        async function testConexion() {
-            mostrarResultado('⏳', 'Probando conexión básica...');
-            
-            try {
-                const { error } = await supabase.auth.getSession();
-                if (error) {
-                    throw error;
-                }
-                mostrarResultado('✅', 'Conexión básica OK');
-            } catch (err) {
-                mostrarResultado('❌', 'Error de conexión: ' + err.message);
-            }
-        }
+          html += `
+            <tr>
+              <td>${order.id}</td>
+              <td>${order.platform}</td>
+              <td>${order.discord_username}</td>
+              <td>${order.rockstar_username}</td>
+              <td>${servicios}</td>
+              <td>${order.console_details || '-'}</td>
+              <td>${order.status}</td>
+              <td>${new Date(order.created_at).toLocaleString()}</td>
+            </tr>
+          `;
+        });
 
-        // Probar conexión al cargar la página
-        testConexion();
-    </script>
+        html += '</tbody></table>';
+        container.innerHTML = html;
+
+      } catch (error) {
+        console.error('Error completo:', error);
+        container.innerHTML = `
+          <p style="color: red;">Error al cargar pedidos:</p>
+          <pre>${JSON.stringify(error, null, 2)}</pre>
+        `;
+      }
+    }
+
+    // Cargar pedidos automáticamente al abrir la página
+    loadOrders();
+  </script>
 </body>
 </html>
