@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin - GTA Services</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabase = createClient(
+      'eaee6cbca33d3400d7dd1e9412b141a8bb6240bb31aa5386df205071ebcb9f44',
+      'e39eb28998776ccbe438b9081060342426c92fc44f7978e50f5bf8f3149ed179'
+    );
+  </script>
+</head>
+<body>
+  <div id="loginSection" class="container">
+    <h2>Admin Login</h2>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button onclick="login()">Login</button>
+    <div id="loginError" style="color: red;"></div>
+  </div>
+
+  <div id="dashboardSection" class="container" style="display:none;">
+    <h2>Orders</h2>
+    <table id="ordersTable">
+      <thead>
+        <tr>
+          <th>ID</th><th>Platform</th><th>Discord</th><th>Rockstar</th><th>Services</th><th>Status</th><th>Purchase Count</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <script>
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        document.getElementById('loginError').innerText = error.message;
+      } else {
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('dashboardSection').style.display = 'block';
+        loadOrders();
+      }
+    }
+
+    async function loadOrders() {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*, customers(purchase_count)')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      const tbody = document.querySelector('#ordersTable tbody');
+      tbody.innerHTML = '';
+      orders.forEach(order => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${order.id}</td>
+          <td>${order.platform}</td>
+          <td>${order.discord_username}</td>
+          <td>${order.rockstar_username}</td>
+          <td>${JSON.parse(order.services).join(', ')}</td>
+          <td>${order.status}</td>
+          <td>${order.customers?.purchase_count || 'N/A'}</td>
+          <td>${order.status === 'pending' ? `<button onclick="completeOrder(${order.id})">Complete</button>` : ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function completeOrder(id) {
+      await supabase
+        .from('orders')
+        .update({ status: 'completed', completed_at: new Date() })
+        .eq('id', id);
+      loadOrders();
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      location.reload();
+    }
+  </script>
+</body>
+</html>
