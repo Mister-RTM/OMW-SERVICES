@@ -12,42 +12,44 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
     rockstar: formData.get('rockstar')
   };
 
-  console.log('Sending payload:', payload); // Log what we're sending
+  console.log('📤 Enviando payload:', payload);
+
+  // IMPORTANTE: Reemplaza con tu anon key real de Supabase
+  const ANON_KEY = 'e39eb28998776ccbe438b9081060342426c92fc44f7978e50f5bf8f3149ed179';
 
   try {
-    const res = await fetch('https://nzbkaztxcprxeriisgmp.supabase.co/functions/v1/place_order', {
+    const res = await fetch('https://nzbkaztxcprxeriisgmp.supabase.co/functions/v1/place-order-v2', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56YmthenR4Y3ByeGVyaWlzZ21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjU3MTEsImV4cCI6MjA1NzYwMTcxMX0.2CxMk3dAtffIGvO6QbM_FKfWetk77vOe-6rT0hE9kFk',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56YmthenR4Y3ByeGVyaWlzZ21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjU3MTEsImV4cCI6MjA1NzYwMTcxMX0.2CxMk3dAtffIGvO6QbM_FKfWetk77vOe-6rT0hE9kFk'
+        'apikey': ANON_KEY,
+        'Authorization': `Bearer ${ANON_KEY}`
       },
       body: JSON.stringify(payload)
     });
     
-    console.log('Response status:', res.status); // Log status
-    console.log('Response headers:', [...res.headers.entries()]); // Log headers
+    console.log('📥 Estado respuesta:', res.status);
     
-    const responseText = await res.text(); // Get raw response
-    console.log('Raw response:', responseText); // Log raw response
+    const responseText = await res.text();
+    console.log('📄 Respuesta raw:', responseText);
     
     let data;
     try {
-      data = JSON.parse(responseText); // Try to parse as JSON
+      data = JSON.parse(responseText);
     } catch (e) {
-      console.error('Could not parse response as JSON:', responseText);
-      alert('Server returned invalid response. Check console.');
+      console.error('❌ No se pudo parsear JSON:', responseText);
+      alert('Error: Respuesta del servidor inválida');
       return;
     }
     
     if (res.ok) {
-      alert(`Order placed! Your purchase count: ${data.purchaseCount}`);
+      alert(`✅ ¡Pedido realizado! Tu contador de compras: ${data.purchaseCount}`);
       e.target.reset();
     } else {
-      alert('Error: ' + (data.error || 'Unknown error'));
+      alert(`❌ Error: ${data.error || 'Error desconocido'}`);
     }
   } catch (err) {
-    console.error('Fetch error:', err);
-    alert('Network error – please try again. Check console for details.');
+    console.error('🌐 Error de red:', err);
+    alert('Error de red. Revisa la consola para más detalles.');
   }
 });
